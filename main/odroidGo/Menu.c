@@ -80,11 +80,8 @@ char* lastOpenedFileFullPath;
 
 int position = 0;
 int selPosition = 0;
-#ifdef WITH_WLAN  
-    #define MENU_ITEMS 15
-#else
-    #define MENU_ITEMS 12
-#endif
+
+#define MENU_ITEMS 15
 
 #define MENU_ITEM_LOADFILE      0
 #define MENU_ITEM_SAVEFILE      1
@@ -96,18 +93,11 @@ int selPosition = 0;
 #define MENU_ITEM_RESETBASIC    7
 #define MENU_ITEM_RESETNAV      8
 #define MENU_ITEM_AUDIO         9
-
-#if WITH_SAM
-    #define MENU_ITEM_SAM   10
-#endif
-
-#ifdef WITH_WLAN
-    #define MENU_ITEM_MULTISERVER   11
-    #define MENU_ITEM_MULTICLIENT   12
-    #define MENU_ITEM_ABOUT         14
-#else
-    #define MENU_ITEM_ABOUT         11
-#endif
+#define MENU_ITEM_MULTISERVER   10
+#define MENU_ITEM_MULTICLIENT   11
+#define MENU_ITEM_SAM   		12
+#define MENU_ITEM_ABOUT         13
+#define MENU_ITEM_EXIT         	14
 
 
 
@@ -128,27 +118,11 @@ static const struct {
    "Reset to Basic",
    "Reset to NAV",
    "Audio output",
-#ifdef WITH_WLAN
-   #ifdef WITH_SAM
-      "SAM",
-   #else 
-      "",
-   #endif
    "Start multiplayer server",
    "Start multiplayer client",
-#endif
-#ifdef WITH_SAM
-   #ifdef WITH_WLAN
-      "",
-   #else
-      "SAM",
-   #endif
-#else
-   "",
-#endif
-   "About"
-   
-   
+   "SAM",
+   "About",
+   "Exit"
 };
 static uint16_t pixelBlend(uint16_t a, uint16_t b)
 {
@@ -298,6 +272,7 @@ const char* odroidFmsxGUI_chooseFile(const char *Ext) {
    Buf = (char*)heap_caps_malloc(256, MALLOC_CAP_SPIRAM);
    char* txtFilesPosition;
    
+   printf("odroidFmsxGUI_chooseFile (1)\r\n");
    
    
    int i, r, s, fileCount;
@@ -330,8 +305,7 @@ const char* odroidFmsxGUI_chooseFile(const char *Ext) {
    int keyNumPressed;
    
    if((D=_opendir("."))){
-
-        
+       
         fileCount = 0;
         // count how many files we have here
         for (_rewinddir(D); (DP=_readdir(D));){
@@ -339,7 +313,6 @@ const char* odroidFmsxGUI_chooseFile(const char *Ext) {
         }
        
         do {
-            
             txtFilesPosition = txtFiles;
          
          // read a new Page
@@ -459,18 +432,19 @@ const char* odroidFmsxGUI_chooseFile(const char *Ext) {
 
         } while(keyNumPressed != ODROID_INPUT_A && keyNumPressed != ODROID_INPUT_MENU);
         
-        
         closedir(D);
     }
    if(keyNumPressed == ODROID_INPUT_A) {
        strncpy(selectedFile, shownFiles[selPosition - position], FILES_MAX_LENGTH_NAME);
    }
    
+   
    free(txtFiles);
    free(Buf);
    for (int i = 0; i < FILES_MAX_ROWS; i++) free(shownFiles[i]);
    UG_TextboxDelete(&fileWindow, FILES_TEXTBOX_ID);
    UG_WindowDelete(&fileWindow);
+   
    
    if(keyNumPressed == ODROID_INPUT_A) {
             return selectedFile;
@@ -722,12 +696,16 @@ MENU_ACTION odroidFrodoGUI_showMenu() {
                 //////////////// change Disk ////////////////////
                case MENU_ITEM_CHANGEDISK:
                
+					printf("Change Disk...\r\n");
                    if (c64_isNAVRunning()) {
                         odroidFrodoGUI_msgBox("Change disc", "NAV is running. \nPlease use \"Load File\"", 1);
+						printf("Nav is running.\r\n");
                         break;
                    }
+				   printf("Calling odroidFmsxGUI_chooseFile\r\n");
                    char* file = odroidFmsxGUI_chooseFile(".d64\0.t64\0"); 
                    if (file != NULL) {
+					   printf("File selected.\r\n");
                        odroidFrodoGUI_msgBox("Loading...", "Please wait while loading", 0);
                        char* fullPath = (char*)malloc(1024);
                        getFullPath(fullPath, file, 1024);
@@ -735,8 +713,11 @@ MENU_ACTION odroidFrodoGUI_showMenu() {
                        free(fullPath);
                        stopMenu = true;
                        
-                   }
-               
+                   }else{
+					   printf("No File selected.\r\n");
+					   
+				   }
+				printf("Change Disk done.\r\n");
                    break;  
                 //////////////// Eject Disks ////////////////////
                case MENU_ITEM_EJECTDISK:
@@ -828,6 +809,10 @@ MENU_ACTION odroidFrodoGUI_showMenu() {
                   odroidFrodoGUI_msgBox("About", abouttext, 1);
                   free(abouttext);
                break;
+			   case MENU_ITEM_EXIT:
+			       odroid_system_application_set(0);
+				   esp_restart();
+			   break;
            };
        }
        if (keyPressed == ODROID_INPUT_MENU) stopMenu = true;

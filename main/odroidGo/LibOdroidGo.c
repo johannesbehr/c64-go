@@ -40,10 +40,24 @@ void c64_started() {
     char* lastDir = malloc(1024);
     C64_setStdKeymapping();
     LoadKeyMapping(FRODO_CONFIG_FILE);
-    
-   
-    // go to last dir, if exists
-    ini_gets("C64", "LASTDIR", "", lastDir, 1024, FRODO_CONFIG_FILE);
+	
+	char *selected_file = odroid_settings_RomFilePath_get();
+	
+	if(selected_file!=NULL && (
+		strstr(selected_file,".T64")||
+		strstr(selected_file,".D64")||
+		strstr(selected_file,".t64")||
+		strstr(selected_file,".d64")
+		)){
+		sprintf(lastDir, "%s","" );
+		sprintf(lastGame,"%s",selected_file);
+	}
+	else{
+		// go to last dir, if exists
+		ini_gets("C64", "LASTDIR", "", lastDir, 1024, FRODO_CONFIG_FILE);
+	}
+	
+	free(selected_file);
     chdir(lastDir);
     
     

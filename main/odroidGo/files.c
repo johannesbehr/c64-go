@@ -184,6 +184,8 @@ DIR* _opendir(const char* name)
     STOP_DISPLAY_FUNCTION();
     DIR* d;
     if (!strcmp(name, ".")) {
+		printf("Trying to open: %s\r\n", getcwd(buffer, 1024));
+		
         d = opendir(getcwd(buffer, 1024));
     } else d = opendir(name);
     
