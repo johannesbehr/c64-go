@@ -77,6 +77,8 @@ int lastSelectedItem = 0;
 int holdDownCounter = 0;
 char* selectedFile;
 char* lastOpenedFileFullPath;
+char* lastOpenedFileConfigFullPath;
+
 
 int position = 0;
 int selPosition = 0;
@@ -169,8 +171,11 @@ void odroidFrodoGUI_initMenu() {
    
    
    selectedFile = (char*)heap_caps_malloc(FILES_MAX_LENGTH_NAME+1, MALLOC_CAP_SPIRAM);
-   lastOpenedFileFullPath = (char*)malloc(1024);
+   lastOpenedFileFullPath = (char*)malloc(FILES_MAX_LENGTH_NAME);
    lastOpenedFileFullPath[0] = 0;
+   lastOpenedFileConfigFullPath = (char*)malloc(FILES_MAX_LENGTH_NAME);
+   lastOpenedFileConfigFullPath[0] = 0;
+   
    
    menuTxt = (char*)heap_caps_malloc(1000, MALLOC_CAP_SPIRAM);
    
@@ -406,8 +411,8 @@ const char* odroidFmsxGUI_chooseFile(const char *Ext) {
             selPosition = 0;
             for (int i = 0; i < FILES_MAX_ROWS; i++) free(shownFiles[i]);
             closedir(D);
-            char* cDir = malloc(1024);
-            getcwd(cDir, 1024);
+            char* cDir = malloc(FILES_MAX_LENGTH_NAME);
+            getcwd(cDir, FILES_MAX_LENGTH_NAME);
             ini_puts("C64", "LASTDIR", cDir, FRODO_CONFIG_FILE);
             free(cDir);
             return odroidFmsxGUI_chooseFile(Ext);
@@ -421,8 +426,8 @@ const char* odroidFmsxGUI_chooseFile(const char *Ext) {
             selPosition = 0;
             for (int i = 0; i < FILES_MAX_ROWS; i++) free(shownFiles[i]);
             closedir(D);
-            char* cDir = malloc(1024);
-            getcwd(cDir, 1024);
+            char* cDir = malloc(FILES_MAX_LENGTH_NAME);
+            getcwd(cDir, FILES_MAX_LENGTH_NAME);
             ini_puts("C64", "LASTDIR", cDir, FRODO_CONFIG_FILE);
             free(cDir);
             return odroidFmsxGUI_chooseFile(Ext);
@@ -493,10 +498,15 @@ void odroidFmsxGUI_selectMenuItem(int item) {
 }
 
 void odroidFrodoGUI_setLastLoadedFile(const char* file) {
-    if (file != NULL)
-        strncpy(lastOpenedFileFullPath, file, 1024);
-    else 
+    if (file != NULL){
+        strncpy(lastOpenedFileFullPath, file, FILES_MAX_LENGTH_NAME);
+		getConfigToFile(lastOpenedFileConfigFullPath, lastOpenedFileFullPath, FILES_MAX_LENGTH_NAME);
+		LoadKeyMapping(lastOpenedFileConfigFullPath);
+	}
+	else {
         lastOpenedFileFullPath[0] = 0;
+		lastOpenedFileConfigFullPath[0]='\0';
+	}
 }
 
 // msg Box: max 33 letters in one row!
@@ -545,11 +555,11 @@ void odroidFrodoGUI_msgBox(const char* title, const char* msg, char waitKey) {
 char saveState(const char* fileName) {
     char res = 1;
     if (! fileName) {
-        char* stateFileName = (char*)heap_caps_malloc(1024, MALLOC_CAP_SPIRAM);
-        char* stateFileNameF = (char*)heap_caps_malloc(1024, MALLOC_CAP_SPIRAM);
-        strncpy(stateFileName, lastOpenedFileFullPath, 1024);
+        char* stateFileName = (char*)heap_caps_malloc(FILES_MAX_LENGTH_NAME, MALLOC_CAP_SPIRAM);
+        char* stateFileNameF = (char*)heap_caps_malloc(FILES_MAX_LENGTH_NAME, MALLOC_CAP_SPIRAM);
+        strncpy(stateFileName, lastOpenedFileFullPath, FILES_MAX_LENGTH_NAME);
         cutExtension(stateFileName);
-        snprintf(stateFileNameF, 1024, "%s.sta", stateFileName);
+        snprintf(stateFileNameF, FILES_MAX_LENGTH_NAME, "%s.sta", stateFileName);
         if (!C64_SaveSnapshot(stateFileNameF)){
             res = 0;
         }
@@ -564,11 +574,11 @@ char loadState(const char* fileName) {
     char res = 1;
     printf("loading state...\n");
     if (! fileName) {
-        char* stateFileName = (char*)heap_caps_malloc(1024, MALLOC_CAP_SPIRAM);
-        char* stateFileNameF = (char*)heap_caps_malloc(1024, MALLOC_CAP_SPIRAM);
-        strncpy(stateFileName, lastOpenedFileFullPath, 1024);
+        char* stateFileName = (char*)heap_caps_malloc(FILES_MAX_LENGTH_NAME, MALLOC_CAP_SPIRAM);
+        char* stateFileNameF = (char*)heap_caps_malloc(FILES_MAX_LENGTH_NAME, MALLOC_CAP_SPIRAM);
+        strncpy(stateFileName, lastOpenedFileFullPath, FILES_MAX_LENGTH_NAME);
         cutExtension(stateFileName);
-        snprintf(stateFileNameF, 1024, "%s.sta", stateFileName);
+        snprintf(stateFileNameF, FILES_MAX_LENGTH_NAME, "%s.sta", stateFileName);
         printf("file: %s\n", stateFileNameF);
         if (! fileExist(stateFileNameF))
             res = 0;
@@ -646,12 +656,16 @@ MENU_ACTION odroidFrodoGUI_showMenu() {
                    lastSelectedFile = odroidFmsxGUI_chooseFile(".d64\0.t64\0");
                    if (lastSelectedFile != NULL) {
                        odroidFrodoGUI_msgBox("Loading...", "Please wait while loading", 0);
-                       char* fullPath = (char*)malloc(1024);
-                       getFullPath(fullPath, lastSelectedFile, 1024);
+                       char* fullPath = (char*)malloc(FILES_MAX_LENGTH_NAME);
+                       getFullPath(fullPath, lastSelectedFile, FILES_MAX_LENGTH_NAME);
                        C64_InsertDisc(8, fullPath);
                        
-                       strncpy(lastOpenedFileFullPath, fullPath, 1024);
+                       strncpy(lastOpenedFileFullPath, fullPath, FILES_MAX_LENGTH_NAME);
                        ini_puts("C64", "LASTGAME", lastOpenedFileFullPath, FRODO_CONFIG_FILE);
+					   getConfigToFile(lastOpenedFileConfigFullPath, lastOpenedFileFullPath, FILES_MAX_LENGTH_NAME);
+					   
+					   printf("Set config to: %s\r\n", lastOpenedFileConfigFullPath);
+					   
                        if (loadState(NULL)) {
                             C64_setStdKeymapping();
                             loadKeyMappingFromGame(lastSelectedFile);
@@ -685,8 +699,8 @@ MENU_ACTION odroidFrodoGUI_showMenu() {
                     {
                         const char* delFile = odroidFmsxGUI_chooseFile(".sta\0\0"); 
                         if (delFile) {
-                             char* fullPath = (char*)malloc(1024);
-                             getFullPath(fullPath, delFile, 1024);
+                             char* fullPath = (char*)malloc(FILES_MAX_LENGTH_NAME);
+                             getFullPath(fullPath, delFile, FILES_MAX_LENGTH_NAME);
                             _remove(fullPath);
                             free(fullPath);
                         }
@@ -707,8 +721,8 @@ MENU_ACTION odroidFrodoGUI_showMenu() {
                    if (file != NULL) {
 					   printf("File selected.\r\n");
                        odroidFrodoGUI_msgBox("Loading...", "Please wait while loading", 0);
-                       char* fullPath = (char*)malloc(1024);
-                       getFullPath(fullPath, file, 1024);
+                       char* fullPath = (char*)malloc(FILES_MAX_LENGTH_NAME);
+                       getFullPath(fullPath, file, FILES_MAX_LENGTH_NAME);
                        C64_InsertDisc(8, fullPath);
                        free(fullPath);
                        stopMenu = true;
@@ -722,16 +736,21 @@ MENU_ACTION odroidFrodoGUI_showMenu() {
                 //////////////// Eject Disks ////////////////////
                case MENU_ITEM_EJECTDISK:
                   
-                   C64_CloseAllChannels();
+                  C64_CloseAllChannels();
+				  *lastOpenedFileConfigFullPath = '\0';
+				   
                   ini_puts("C64", "LASTGAME", "", FRODO_CONFIG_FILE);
                   stopMenu = true;
                   break;
                 //// switch joystick port
                case MENU_ITEM_SWITCHJOY:
-                  if (C64_SwitchJoystickPort())
-                      odroidFrodoGUI_msgBox("Joystick", "Joystick is now on Port 2", 1);
-                  else
+                  if (C64_SwitchJoystickPort()){
+                      if(*lastOpenedFileConfigFullPath)ini_putl("C64", "JoystickSwap",1,lastOpenedFileConfigFullPath);
+					  odroidFrodoGUI_msgBox("Joystick", "Joystick is now on Port 2", 1);
+                  }else{
+                      if(*lastOpenedFileConfigFullPath)ini_putl("C64", "JoystickSwap",0,lastOpenedFileConfigFullPath);
                       odroidFrodoGUI_msgBox("Joystick", "Joystick is now on Port 1", 1);
+				  }
                   break;
                   
                 //// 1541 emulation
@@ -740,11 +759,17 @@ MENU_ACTION odroidFrodoGUI_showMenu() {
                   char emu1541 = C64_is1541emluation();
                   if (! emu1541){
                       odroidFrodoGUI_msgBox("1541", "Please wait while activating 1541", 0); 
+					  if(*lastOpenedFileConfigFullPath){
+						  ini_putl("C64", "1541emulation",1,lastOpenedFileConfigFullPath);
+					  }
                       C64_1541emluation(1);
                       odroidFrodoGUI_msgBox("1541 Emulation", "The 1541 Emulation is now on", 1);
                   }
                   else{
                       C64_1541emluation(0);
+					  if(*lastOpenedFileConfigFullPath){
+						  ini_putl("C64", "1541emulation",0,lastOpenedFileConfigFullPath);
+					  }
                       odroidFrodoGUI_msgBox("1541 Emulation", "The 1541 Emulation is now off", 1);
                       
                   }
@@ -780,7 +805,7 @@ MENU_ACTION odroidFrodoGUI_showMenu() {
                case MENU_ITEM_MULTISERVER:
                    lastSelectedFile = odroidFmsxGUI_chooseFile(".d64\0\0"); 
                    if (lastSelectedFile != NULL) {
-                       getFullPath(lastOpenedFileFullPath, lastSelectedFile, 1024);
+                       getFullPath(lastOpenedFileFullPath, lastSelectedFile, FILES_MAX_LENGTH_NAME);
                        odroid_settings_RomFilePath_set(lastOpenedFileFullPath);
                        odroid_settings_WLAN_set(ODROID_WLAN_AP);
                        fflush(stdout);

@@ -10,6 +10,8 @@
 #include <string.h>
 #include "odroid_settings.h"
 
+#define INVALID 0xffffffff
+
 
 int lastPressedKey = -1;
 char* lastGame;
@@ -77,6 +79,7 @@ void c64_started() {
             if (! mp_isMultiplayer() || mp_isServer())  C64_sendKeys("@8\n"); // reload disc
         } else {
             C64_InsertDisc(8, lastGame);
+			
             if (! C64_LoadSnapshot(lastState)){
                 // fatal: snapshot is corrupt. Delete file and restart the esp.
                 _remove(lastState);
@@ -84,7 +87,7 @@ void c64_started() {
             }
         }
         odroidFrodoGUI_setLastLoadedFile(lastGame);
-        loadKeyMappingFromGame(getFileName(lastGame));
+        //loadKeyMappingFromGame(getFileName(lastGame));
         
         
                            
@@ -150,8 +153,9 @@ void SetKeyMapping(int Key, char* mappingString) {
 char LoadKeyMapping(char* KeyFile) {
    
     if (! fileExist(KeyFile)) return 0;
-    char buffer[16];
+    char buffer[256];
     int res;
+	long resl;
 
     res = ini_gets("KEYMAPPING", "UP", "", buffer, 16, KeyFile);
     if (res) SetKeyMapping(ODROID_INPUT_UP, buffer);
@@ -177,7 +181,68 @@ char LoadKeyMapping(char* KeyFile) {
     res = ini_gets("KEYMAPPING", "B", "", buffer, 16, KeyFile);
     if (res) SetKeyMapping(ODROID_INPUT_B, buffer);
     
-      
+	// Settings for Emulator
+	
+	resl = ini_getl("C64", "JoystickSwap", INVALID, KeyFile);
+    if(resl!=INVALID){
+		printf("Read JoystickSwap: %ld\r\n", resl);
+		
+		if(resl!=C64_getJoystickSwap()){
+			C64_SwitchJoystickPort();
+		}
+	}else{
+			printf("JoystickSwap invalid!\r\n", resl);
+		}
+	
+	resl = ini_getl("C64", "NormalCycles", INVALID, KeyFile);
+    if(resl!=INVALID){
+		printf("Read NormalCycles: %ld\r\n", resl);
+		C64_NormalCycles(resl);
+	}else{
+		printf("NormalCycles invalid!\r\n", resl);
+	}
+	
+	resl = ini_getl("C64", "BadLineCycles", INVALID, KeyFile);
+    if(resl!=INVALID){
+		printf("Read BadLineCycles: %ld\r\n", resl);
+		C64_BadLineCycles(resl);
+	}else{
+		printf("BadLineCycles invalid!\r\n", resl);
+	}
+	
+	resl = ini_getl("C64", "CIACycles", INVALID, KeyFile);
+    if(resl!=INVALID){
+		printf("Read CIACycles: %ld\r\n", resl);
+		C64_NormalCycles(resl);
+	}else{
+		printf("CIACycles invalid!\r\n", resl);
+	}
+	
+	
+	
+	
+	
+	
+	resl = ini_getl("C64", "1541emulation", INVALID, KeyFile);
+    if(resl!=INVALID){
+		printf("Read 1541emulation: %ld\r\n", resl);
+		C64_1541emluation(resl);
+	}else{
+		printf("1541emulation invalid!\r\n", resl);
+	}
+	
+	res = ini_gets("C64", "FloppyDrive9", "", buffer, 256, KeyFile);
+    if (res && buffer[0]!='\0') C64_InsertDisc(9, buffer);
+	
+	res = ini_gets("C64", "FloppyDrive10", "", buffer, 256, KeyFile);
+    if (res && buffer[0]!='\0') C64_InsertDisc(10, buffer);
+	
+	res = ini_gets("C64", "FloppyDrive11", "", buffer, 256, KeyFile);
+    if (res && buffer[0]!='\0') C64_InsertDisc(11, buffer);
+    
+	
+	
+	  
     return 1;
     
     

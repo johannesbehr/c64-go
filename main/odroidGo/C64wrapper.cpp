@@ -70,10 +70,10 @@ void C64_sendKeys(const char* keys) {
 bool C64_InsertDisc(int deviceNumber, const char* filename) {
     if (deviceNumber < 8) return false;
     if (strstr(filename, ".t64") != NULL || strstr(filename, ".T64") != NULL) {
-        printf("insert Tape\n");
+        printf("insert Tape: %s\n",filename);
         ThePrefs.DriveType[deviceNumber-8] = DRVTYPE_T64;
     }  else {
-        printf("insert Disc\n");
+        printf("insert Disc: %s\n",filename);
         ThePrefs.DriveType[deviceNumber-8] = DRVTYPE_D64;
     }
     
@@ -129,6 +129,45 @@ void C64_setFrameSkip( int frames ) {
     
     ThePrefs.SkipFrames = frames;
     
+}
+
+void C64_NormalCycles(int cycles) {
+    if (! theC64){
+        // c64 is not running yet, we can change the prefs without newPrefs
+        ThePrefs.NormalCycles = 0;
+        return;
+    }
+    Prefs p = ThePrefs;
+    p.NormalCycles = cycles;
+    theC64->NewPrefs(&p);
+    
+    ThePrefs = p;
+}
+
+void C64_BadLineCycles(int cycles) {
+    if (! theC64){
+        // c64 is not running yet, we can change the prefs without newPrefs
+        ThePrefs.BadLineCycles = 0;
+        return;
+    }
+    Prefs p = ThePrefs;
+    p.BadLineCycles = cycles;
+    theC64->NewPrefs(&p);
+    
+    ThePrefs = p;
+}
+
+void C64_CIACycles(int cycles) {
+    if (! theC64){
+        // c64 is not running yet, we can change the prefs without newPrefs
+        ThePrefs.CIACycles = 0;
+        return;
+    }
+    Prefs p = ThePrefs;
+    p.CIACycles = cycles;
+    theC64->NewPrefs(&p);
+    
+    ThePrefs = p;
 }
 
 char C64_is1541emluation(  ) {

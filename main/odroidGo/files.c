@@ -166,6 +166,7 @@ char *getcwd(char *buf, size_t size)
     strncpy(buf, fullCurrentDir, size);
     return buf;
 }
+
 char* getFullPath(char* buffer, const char* fileName, int bufferLength){
     if (fileName[0] != '/'){
         getcwd(buffer, bufferLength);
@@ -178,6 +179,26 @@ char* getFullPath(char* buffer, const char* fileName, int bufferLength){
     }
     return buffer;
 }
+
+char* getConfigToFile(char* buffer, const char* fileName, int bufferLength){
+   
+   strncpy(buffer, fileName, 1024);
+   
+   char* pos =  strrchr(buffer, '.');
+   if(pos){ 
+	// Set extension to ".ini"...
+	   pos[1] = 'i';
+	   pos[2] = 'n';
+	   pos[3] = 'i';
+	   pos[4] = '\0';
+   }else{
+	// invalidate buffer
+	   *buffer ='\0';
+   }
+   return buffer;
+}
+
+
 
 DIR* _opendir(const char* name)
 {
